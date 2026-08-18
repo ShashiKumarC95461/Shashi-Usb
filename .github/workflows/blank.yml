@@ -14,25 +14,30 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: Shashi-Usb-Media-v0.9-Smooth-Gallery
+
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: Find APK
         run: |
@@ -43,6 +48,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Shashi-Media-Viewer-APK
-          path: |
-            */build/outputs/apk/debug/.apk
+          path: Shashi-Usb-Media-v0.9-Smooth-Gallery/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
