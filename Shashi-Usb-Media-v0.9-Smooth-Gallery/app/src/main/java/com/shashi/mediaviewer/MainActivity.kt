@@ -1,3 +1,7 @@
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class
+)
 package com.shashi.mediaviewer
 
 import android.Manifest
