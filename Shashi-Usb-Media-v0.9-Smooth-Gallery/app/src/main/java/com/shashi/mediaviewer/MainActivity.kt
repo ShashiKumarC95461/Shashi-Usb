@@ -11,7 +11,6 @@ import android.provider.MediaStore
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 
 import androidx.compose.foundation.background
@@ -107,8 +106,10 @@ import kotlinx.coroutines.withContext
 
 import java.util.Locale
 
+
 private val Orange = Color(0xFFFF5722)
 private val Dark = Color(0xFF111111)
+
 
 data class MediaFile(
     val uri: Uri,
@@ -118,6 +119,7 @@ data class MediaFile(
     val size: Long = 0L
 )
 
+
 enum class Category(val label: String) {
     PHOTOS("Photos"),
     VIDEOS("Videos"),
@@ -125,6 +127,7 @@ enum class Category(val label: String) {
     DOCS("Docs"),
     ALL("File Manager")
 }
+
 
 data class Counts(
     val photos: Int = 0,
@@ -134,15 +137,18 @@ data class Counts(
     val all: Int = 0
 )
 
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             ShashiUsbMediaApp()
         }
     }
 }
+
 
 @Composable
 fun ShashiUsbMediaApp() {
@@ -190,6 +196,7 @@ fun ShashiUsbMediaApp() {
         mutableStateOf<Uri?>(null)
     }
 
+
     fun scan() = scope.launch {
 
         scanning = true
@@ -201,8 +208,8 @@ fun ShashiUsbMediaApp() {
 
             var merged = base
 
-            treeUri?.let {
-                merged += scanTree(context, it)
+            treeUri?.let { uri ->
+                merged = merged + scanTree(context, uri)
             }
 
             files = merged.distinctBy {
@@ -221,12 +228,14 @@ fun ShashiUsbMediaApp() {
         }
     }
 
+
     val permissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) {
             scan()
         }
+
 
     val treeLauncher =
         rememberLauncherForActivityResult(
@@ -236,18 +245,22 @@ fun ShashiUsbMediaApp() {
             if (uri != null) {
 
                 try {
+
                     context.contentResolver.takePersistableUriPermission(
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
+
                 } catch (_: Exception) {
                 }
 
                 treeUri = uri
                 sourceScreen = false
+
                 scan()
             }
         }
+
 
     val cloudLauncher =
         rememberLauncherForActivityResult(
@@ -257,7 +270,9 @@ fun ShashiUsbMediaApp() {
             if (uri != null) {
 
                 val name =
-                    DocumentFile.fromSingleUri(context, uri)?.name
+                    DocumentFile
+                        .fromSingleUri(context, uri)
+                        ?.name
                         ?: "Cloud file"
 
                 val mime =
@@ -265,13 +280,14 @@ fun ShashiUsbMediaApp() {
                         ?: "/"
 
                 viewer = MediaFile(
-                    uri,
-                    name,
-                    mime,
-                    categoryFromMime(mime)
+                    uri = uri,
+                    name = name,
+                    mime = mime,
+                    type = categoryFromMime(mime)
                 )
             }
         }
+
 
     LaunchedEffect(Unit) {
 
@@ -291,12 +307,16 @@ fun ShashiUsbMediaApp() {
                 )
             }
 
-        val missing = needed.filter {
-            ContextCompat.checkSelfPermission(
-                context,
-                it
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+
+        val missing =
+            needed.filter {
+
+                ContextCompat.checkSelfPermission(
+                    context,
+                    it
+                ) != PackageManager.PERMISSION_GRANTED
+            }
+
 
         if (missing.isNotEmpty()) {
 
@@ -310,14 +330,16 @@ fun ShashiUsbMediaApp() {
         }
     }
 
-    viewer?.let {
 
-        Viewer(it) {
+    viewer?.let { file ->
+
+        Viewer(file) {
             viewer = null
         }
 
         return
     }
+
 
     category?.let { cat ->
 
@@ -332,19 +354,24 @@ fun ShashiUsbMediaApp() {
                 }
                 .toList()
 
+
         CategoryBrowser(
-            cat,
-            shown,
-            grid,
-            search,
-            scanning,
-            { search = it },
-            { grid = !grid },
-            {
+            category = cat,
+            files = shown,
+            grid = grid,
+            search = search,
+            scanning = scanning,
+            onSearch = {
+                search = it
+            },
+            onToggle = {
+                grid = !grid
+            },
+            onBack = {
                 category = null
                 search = ""
             },
-            {
+            onOpen = {
                 viewer = it
             }
         )
@@ -352,19 +379,28 @@ fun ShashiUsbMediaApp() {
         return
     }
 
+
     if (sourceScreen) {
 
         SourceScreen(
-            { sourceScreen = false },
-            {
+            onBack = {
+                sourceScreen = false
+            },
+
+            onInternal = {
+
                 sourceScreen = false
                 treeUri = null
+
                 scan()
             },
-            {
+
+            onUsb = {
                 treeLauncher.launch(null)
             },
-            {
+
+            onCloud = {
+
                 cloudLauncher.launch(
                     arrayOf(
                         "image/*",
@@ -383,6 +419,7 @@ fun ShashiUsbMediaApp() {
         return
     }
 
+
     Scaffold(
 
         containerColor = Dark,
@@ -396,18 +433,19 @@ fun ShashiUsbMediaApp() {
                     Column {
 
                         Text(
-                            "Shashi-Usb-Media",
+                            text = "Shashi-Usb-Media",
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            "Fast • Smooth Gallery • Deep Scan",
+                            text = "Fast • Smooth Gallery • Deep Scan",
                             color = Color.White,
                             fontSize = 12.sp
                         )
                     }
                 },
+
 
                 actions = {
 
@@ -418,11 +456,12 @@ fun ShashiUsbMediaApp() {
                     ) {
 
                         Icon(
-                            Icons.Default.Storage,
-                            "Sources",
+                            imageVector = Icons.Default.Storage,
+                            contentDescription = "Sources",
                             tint = Color.White
                         )
                     }
+
 
                     IconButton(
                         onClick = {
@@ -432,12 +471,13 @@ fun ShashiUsbMediaApp() {
                     ) {
 
                         Icon(
-                            Icons.Default.Refresh,
-                            "Refresh",
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
                             tint = Color.White
                         )
                     }
                 },
+
 
                 colors =
                     TopAppBarDefaults.topAppBarColors(
@@ -448,184 +488,220 @@ fun ShashiUsbMediaApp() {
 
     ) { padding ->
 
+
         LazyColumn(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 12.dp),
+
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 12.dp),
 
             contentPadding =
-                PaddingValues(vertical = 10.dp)
+                PaddingValues(
+                    vertical = 10.dp
+                )
         ) {
+
 
             item {
 
                 Text(
-                    "Internal storage",
+                    text = "Internal storage",
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
 
+
                 Spacer(
-                    Modifier.height(8.dp)
+                    modifier = Modifier.height(8.dp)
                 )
+
 
                 if (scanning) {
 
                     LinearProgressIndicator(
-                        Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(
-                        Modifier.height(8.dp)
+                        modifier = Modifier.height(8.dp)
                     )
                 }
+
 
                 error?.let {
 
                     Text(
-                        "Scan error: $it",
+                        text = "Scan error: $it",
                         color = Color(0xFFFF8A80),
                         fontSize = 12.sp
                     )
                 }
             }
 
+
             item {
 
                 HomeCard(
-                    "Photos",
-                    counts.photos,
-                    Color(0xFF15155A),
-                    Icons.Default.Image
+                    title = "Photos",
+                    count = counts.photos,
+                    color = Color(0xFF15155A),
+                    icon = Icons.Default.Image
                 ) {
+
                     category = Category.PHOTOS
                 }
             }
 
+
             item {
 
                 HomeCard(
-                    "Photos and Videos",
-                    counts.photos + counts.videos,
-                    Color(0xFF401044),
-                    Icons.Default.GridView
+                    title = "Photos and Videos",
+                    count = counts.photos + counts.videos,
+                    color = Color(0xFF401044),
+                    icon = Icons.Default.GridView
                 ) {
+
                     category = Category.ALL
                 }
             }
 
+
             item {
 
                 HomeCard(
-                    "Videos",
-                    counts.videos,
-                    Color(0xFF4A1111),
-                    Icons.Default.PlayArrow
+                    title = "Videos",
+                    count = counts.videos,
+                    color = Color(0xFF4A1111),
+                    icon = Icons.Default.PlayArrow
                 ) {
+
                     category = Category.VIDEOS
                 }
             }
 
+
             item {
 
                 HomeCard(
-                    "Music",
-                    counts.music,
-                    Color(0xFF0E3A0E),
-                    Icons.Default.MusicNote
+                    title = "Music",
+                    count = counts.music,
+                    color = Color(0xFF0E3A0E),
+                    icon = Icons.Default.MusicNote
                 ) {
+
                     category = Category.MUSIC
                 }
             }
 
+
             item {
 
                 HomeCard(
-                    "Docs",
-                    counts.docs,
-                    Color(0xFF333333),
-                    Icons.Default.Description
+                    title = "Docs",
+                    count = counts.docs,
+                    color = Color(0xFF333333),
+                    icon = Icons.Default.Description
                 ) {
+
                     category = Category.DOCS
                 }
             }
 
+
             item {
 
                 HomeCard(
-                    "File Manager",
-                    counts.all,
-                    Color(0xFF333311),
-                    Icons.Default.Folder
+                    title = "File Manager",
+                    count = counts.all,
+                    color = Color(0xFF333311),
+                    icon = Icons.Default.Folder
                 ) {
+
                     category = Category.ALL
                 }
             }
 
+
             item {
 
                 Spacer(
-                    Modifier.height(10.dp)
+                    modifier = Modifier.height(10.dp)
                 )
+
 
                 Button(
                     onClick = {
                         scan()
                     },
+
                     enabled = !scanning,
-                    modifier = Modifier.fillMaxWidth()
+
+                    modifier =
+                        Modifier.fillMaxWidth()
                 ) {
 
                     Icon(
-                        Icons.Default.Search,
-                        null
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
                     )
+
 
                     Spacer(
-                        Modifier.size(8.dp)
+                        modifier = Modifier.size(8.dp)
                     )
 
+
                     Text(
-                        if (scanning)
-                            "Scanning..."
-                        else
-                            "Deep Scan / Refresh"
+                        text =
+                            if (scanning)
+                                "Scanning..."
+                            else
+                                "Deep Scan / Refresh"
                     )
                 }
             }
 
+
             item {
 
                 Spacer(
-                    Modifier.height(8.dp)
+                    modifier = Modifier.height(8.dp)
                 )
+
 
                 OutlinedButton(
                     onClick = {
                         sourceScreen = true
                     },
-                    modifier = Modifier.fillMaxWidth()
+
+                    modifier =
+                        Modifier.fillMaxWidth()
                 ) {
 
                     Icon(
-                        Icons.Default.Usb,
-                        null
+                        imageVector = Icons.Default.Usb,
+                        contentDescription = null
                     )
+
 
                     Spacer(
-                        Modifier.size(8.dp)
+                        modifier = Modifier.size(8.dp)
                     )
 
+
                     Text(
-                        "Select Source / USB / Cloud"
+                        text = "Select Source / USB / Cloud"
                     )
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun HomeCard(
@@ -637,14 +713,17 @@ fun HomeCard(
 ) {
 
     Card(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable {
-                onClick()
-            },
 
-        shape = RoundedCornerShape(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+                .clickable {
+                    onClick()
+                },
+
+        shape =
+            RoundedCornerShape(8.dp),
 
         colors =
             CardDefaults.cardColors(
@@ -653,31 +732,38 @@ fun HomeCard(
     ) {
 
         Row(
-            Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+
+            modifier =
+                Modifier.padding(14.dp),
+
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
 
             Icon(
-                icon,
-                null,
+                imageVector = icon,
+                contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(42.dp)
             )
 
+
             Spacer(
-                Modifier.size(14.dp)
+                modifier = Modifier.size(14.dp)
             )
+
 
             Column {
 
                 Text(
-                    title,
+                    text = title,
                     color = Color.White,
                     fontSize = 20.sp
                 )
 
+
                 Text(
-                    count.toString(),
+                    text = count.toString(),
                     color = Color.LightGray,
                     fontSize = 14.sp
                 )
@@ -685,6 +771,7 @@ fun HomeCard(
         }
     }
 }
+
 
 @Composable
 fun SourceScreen(
@@ -696,7 +783,8 @@ fun SourceScreen(
 
     Scaffold(
 
-        containerColor = Color(0xFF303030),
+        containerColor =
+            Color(0xFF303030),
 
         topBar = {
 
@@ -707,17 +795,18 @@ fun SourceScreen(
                     Column {
 
                         Text(
-                            "Shashi-Usb-Media",
+                            text = "Shashi-Usb-Media",
                             color = Color.White
                         )
 
                         Text(
-                            "Select Source",
+                            text = "Select Source",
                             color = Color.LightGray,
                             fontSize = 13.sp
                         )
                     }
                 },
+
 
                 navigationIcon = {
 
@@ -726,12 +815,13 @@ fun SourceScreen(
                     ) {
 
                         Icon(
-                            Icons.Default.ArrowBack,
-                            "Back",
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
                             tint = Color.White
                         )
                     }
                 },
+
 
                 colors =
                     TopAppBarDefaults.topAppBarColors(
@@ -740,37 +830,42 @@ fun SourceScreen(
             )
         }
 
-    ) { p ->
+    ) { padding ->
 
         Column(
-            Modifier
-                .fillMaxSize()
-                .padding(p)
+
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
         ) {
 
             SourceRow(
-                "Internal storage",
-                "/storage/emulated/0",
-                Icons.Default.Storage,
-                onInternal
+                title = "Internal storage",
+                subtitle = "/storage/emulated/0",
+                icon = Icons.Default.Storage,
+                onClick = onInternal
             )
 
-            SourceRow(
-                "USB drive / folder",
-                "Choose an accessible USB or storage folder",
-                Icons.Default.Usb,
-                onUsb
-            )
 
             SourceRow(
-                "Cloud storage",
-                "Google Drive, OneDrive, Dropbox and other providers",
-                Icons.Default.Cloud,
-                onCloud
+                title = "USB drive / folder",
+                subtitle = "Choose an accessible USB or storage folder",
+                icon = Icons.Default.Usb,
+                onClick = onUsb
+            )
+
+
+            SourceRow(
+                title = "Cloud storage",
+                subtitle = "Google Drive, OneDrive, Dropbox and other providers",
+                icon = Icons.Default.Cloud,
+                onClick = onCloud
             )
         }
     }
 }
+
 
 @Composable
 fun SourceRow(
@@ -781,43 +876,50 @@ fun SourceRow(
 ) {
 
     Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable {
-                onClick()
-            }
-            .padding(18.dp),
 
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onClick()
+                }
+                .padding(18.dp),
+
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
 
         Icon(
-            icon,
-            null,
+            imageVector = icon,
+            contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(50.dp)
         )
 
+
         Spacer(
-            Modifier.size(18.dp)
+            modifier = Modifier.size(18.dp)
         )
+
 
         Column {
 
             Text(
-                title,
+                text = title,
                 color = Color.White,
                 fontSize = 20.sp
             )
 
+
             Text(
-                subtitle,
+                text = subtitle,
                 color = Color.LightGray,
                 fontSize = 13.sp
             )
         }
     }
 }
+
 
 @Composable
 fun CategoryBrowser(
@@ -832,8 +934,12 @@ fun CategoryBrowser(
     onOpen: (MediaFile) -> Unit
 ) {
 
-    val listState = rememberLazyListState()
-    val gridState = rememberLazyGridState()
+    val listState =
+        rememberLazyListState()
+
+    val gridState =
+        rememberLazyGridState()
+
 
     Scaffold(
 
@@ -846,10 +952,11 @@ fun CategoryBrowser(
                 title = {
 
                     Text(
-                        "${category.label} (${files.size})",
+                        text = "${category.label} (${files.size})",
                         color = Color.White
                     )
                 },
+
 
                 navigationIcon = {
 
@@ -858,12 +965,13 @@ fun CategoryBrowser(
                     ) {
 
                         Icon(
-                            Icons.Default.ArrowBack,
-                            "Back",
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
                             tint = Color.White
                         )
                     }
                 },
+
 
                 actions = {
 
@@ -872,15 +980,19 @@ fun CategoryBrowser(
                     ) {
 
                         Icon(
-                            if (grid)
-                                Icons.Default.List
-                            else
-                                Icons.Default.GridView,
-                            "Toggle view",
+                            imageVector =
+                                if (grid)
+                                    Icons.Default.List
+                                else
+                                    Icons.Default.GridView,
+
+                            contentDescription = "Toggle view",
+
                             tint = Color.White
                         )
                     }
                 },
+
 
                 colors =
                     TopAppBarDefaults.topAppBarColors(
@@ -889,43 +1001,58 @@ fun CategoryBrowser(
             )
         }
 
-    ) { p ->
+    ) { padding ->
+
 
         Column(
-            Modifier
-                .fillMaxSize()
-                .padding(p)
+
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
         ) {
 
+
             OutlinedTextField(
+
                 value = search,
+
                 onValueChange = onSearch,
+
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(8.dp),
+
                 singleLine = true,
+
                 label = {
                     Text("Search files")
                 }
             )
 
+
             if (scanning) {
 
                 LinearProgressIndicator(
-                    Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
+
 
             if (files.isEmpty()) {
 
                 Box(
-                    Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+
+                    modifier =
+                        Modifier.fillMaxSize(),
+
+                    contentAlignment =
+                        Alignment.Center
                 ) {
 
                     Text(
-                        "No files found",
+                        text = "No files found",
                         color = Color.White
                     )
                 }
@@ -933,14 +1060,21 @@ fun CategoryBrowser(
             } else if (grid) {
 
                 LazyVerticalGrid(
-                    GridCells.Adaptive(112.dp),
+
+                    columns =
+                        GridCells.Adaptive(112.dp),
+
                     state = gridState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(5.dp)
+
+                    modifier =
+                        Modifier.fillMaxSize(),
+
+                    contentPadding =
+                        PaddingValues(5.dp)
                 ) {
 
                     items(
-                        files,
+                        items = files,
                         key = {
                             it.uri.toString()
                         }
@@ -955,14 +1089,18 @@ fun CategoryBrowser(
             } else {
 
                 LazyColumn(
+
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+
+                    modifier =
+                        Modifier.fillMaxSize(),
+
                     contentPadding =
                         PaddingValues(bottom = 20.dp)
                 ) {
 
                     items(
-                        files,
+                        items = files,
                         key = {
                             it.uri.toString()
                         }
@@ -978,6 +1116,7 @@ fun CategoryBrowser(
     }
 }
 
+
 @Composable
 fun GalleryTile(
     file: MediaFile,
@@ -985,50 +1124,64 @@ fun GalleryTile(
 ) {
 
     Card(
-        Modifier
-            .padding(3.dp)
-            .clickable {
-                onOpen()
-            },
+
+        modifier =
+            Modifier
+                .padding(3.dp)
+                .clickable {
+                    onOpen()
+                },
 
         colors =
             CardDefaults.cardColors(
-                containerColor = Color(0xFF242424)
+                containerColor =
+                    Color(0xFF242424)
             )
     ) {
 
         Column {
 
             Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
 
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+
+                contentAlignment =
+                    Alignment.Center
             ) {
 
                 if (file.type == Category.PHOTOS) {
 
                     AsyncImage(
+
                         model = file.uri,
+
                         contentDescription = file.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+
+                        modifier =
+                            Modifier.fillMaxSize(),
+
+                        contentScale =
+                            ContentScale.Crop
                     )
 
                 } else if (file.type == Category.VIDEOS) {
 
                     Icon(
-                        Icons.Default.PlayCircle,
-                        null,
+                        imageVector = Icons.Default.PlayCircle,
+                        contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(48.dp)
                     )
 
+
                     Text(
-                        "VIDEO",
+                        text = "VIDEO",
                         color = Color.LightGray,
                         fontSize = 10.sp,
+
                         modifier =
                             Modifier
                                 .align(Alignment.BottomCenter)
@@ -1038,28 +1191,44 @@ fun GalleryTile(
                 } else {
 
                     Icon(
-                        if (file.type == Category.MUSIC)
-                            Icons.Default.MusicNote
-                        else
-                            Icons.Default.Description,
-                        null,
+
+                        imageVector =
+                            if (file.type == Category.MUSIC)
+                                Icons.Default.MusicNote
+                            else
+                                Icons.Default.Description,
+
+                        contentDescription = null,
+
                         tint = Color.White,
-                        modifier = Modifier.size(48.dp)
+
+                        modifier =
+                            Modifier.size(48.dp)
                     )
                 }
             }
 
+
             Text(
-                file.name,
+
+                text = file.name,
+
                 color = Color.White,
+
                 fontSize = 11.sp,
+
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(5.dp)
+
+                overflow =
+                    TextOverflow.Ellipsis,
+
+                modifier =
+                    Modifier.padding(5.dp)
             )
         }
     }
 }
+
 
 @Composable
 fun FileRow(
@@ -1068,70 +1237,91 @@ fun FileRow(
 ) {
 
     Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable {
-                onOpen()
-            }
-            .padding(
-                horizontal = 14.dp,
-                vertical = 11.dp
-            ),
 
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onOpen()
+                }
+                .padding(
+                    horizontal = 14.dp,
+                    vertical = 11.dp
+                ),
+
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
 
         Icon(
-            when (file.type) {
-                Category.PHOTOS ->
-                    Icons.Default.Image
 
-                Category.VIDEOS ->
-                    Icons.Default.PlayCircle
+            imageVector =
+                when (file.type) {
 
-                Category.MUSIC ->
-                    Icons.Default.MusicNote
+                    Category.PHOTOS ->
+                        Icons.Default.Image
 
-                Category.DOCS ->
-                    Icons.Default.Description
+                    Category.VIDEOS ->
+                        Icons.Default.PlayCircle
 
-                Category.ALL ->
-                    Icons.Default.InsertDriveFile
-            },
+                    Category.MUSIC ->
+                        Icons.Default.MusicNote
 
-            null,
+                    Category.DOCS ->
+                        Icons.Default.Description
+
+                    Category.ALL ->
+                        Icons.Default.InsertDriveFile
+                },
+
+            contentDescription = null,
 
             tint = Color.White,
 
-            modifier = Modifier.size(38.dp)
+            modifier =
+                Modifier.size(38.dp)
         )
+
 
         Spacer(
-            Modifier.size(12.dp)
+            modifier = Modifier.size(12.dp)
         )
 
+
         Column(
-            Modifier.weight(1f)
+            modifier = Modifier.weight(1f)
         ) {
 
             Text(
-                file.name,
+
+                text = file.name,
+
                 color = Color.White,
+
                 fontSize = 15.sp,
+
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+
+                overflow =
+                    TextOverflow.Ellipsis
             )
 
+
             Text(
-                file.mime.ifBlank {
-                    file.type.label
-                },
+
+                text =
+                    file.mime.ifBlank {
+                        file.type.label
+                    },
+
                 color = Color.Gray,
+
                 fontSize = 11.sp
             )
         }
     }
 }
+
 
 @Composable
 fun Viewer(
@@ -1150,12 +1340,18 @@ fun Viewer(
                 title = {
 
                     Text(
-                        file.name,
+
+                        text = file.name,
+
                         color = Color.White,
+
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+
+                        overflow =
+                            TextOverflow.Ellipsis
                     )
                 },
+
 
                 navigationIcon = {
 
@@ -1164,12 +1360,13 @@ fun Viewer(
                     ) {
 
                         Icon(
-                            Icons.Default.ArrowBack,
-                            "Back",
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
                             tint = Color.White
                         )
                     }
                 },
+
 
                 colors =
                     TopAppBarDefaults.topAppBarColors(
@@ -1178,14 +1375,18 @@ fun Viewer(
             )
         }
 
-    ) { p ->
+    ) { padding ->
+
 
         Box(
-            Modifier
-                .fillMaxSize()
-                .padding(p),
 
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+
+            contentAlignment =
+                Alignment.Center
         ) {
 
             when (file.type) {
@@ -1203,8 +1404,11 @@ fun Viewer(
     }
 }
 
+
 @Composable
-fun SmoothPhotoViewer(uri: Uri) {
+fun SmoothPhotoViewer(
+    uri: Uri
+) {
 
     var scale by remember(uri) {
         mutableStateOf(1f)
@@ -1218,50 +1422,59 @@ fun SmoothPhotoViewer(uri: Uri) {
         mutableStateOf(0f)
     }
 
+
     Box(
 
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
 
-            .pointerInput(uri) {
+                .pointerInput(uri) {
 
-                detectTransformGestures {
-                        _,
-                        pan,
-                        zoom,
-                        _ ->
+                    detectTransformGestures {
 
-                    scale =
-                        (scale * zoom)
-                            .coerceIn(1f, 5f)
+                            _,
+                            pan,
+                            zoom,
+                            _ ->
 
-                    offsetX += pan.x
-                    offsetY += pan.y
-                }
-            }
+                        scale =
+                            (scale * zoom)
+                                .coerceIn(
+                                    1f,
+                                    5f
+                                )
 
-            .pointerInput(uri) {
-
-                detectTapGestures(
-                    onDoubleTap = {
-
-                        if (scale > 1.05f) {
-
-                            scale = 1f
-                            offsetX = 0f
-                            offsetY = 0f
-
-                        } else {
-
-                            scale = 2f
-                        }
+                        offsetX += pan.x
+                        offsetY += pan.y
                     }
-                )
-            },
+                }
 
-        contentAlignment = Alignment.Center
+                .pointerInput(uri) {
+
+                    detectTapGestures(
+
+                        onDoubleTap = {
+
+                            if (scale > 1.05f) {
+
+                                scale = 1f
+                                offsetX = 0f
+                                offsetY = 0f
+
+                            } else {
+
+                                scale = 2f
+                            }
+                        }
+                    )
+                },
+
+        contentAlignment =
+            Alignment.Center
     ) {
+
 
         AsyncImage(
 
@@ -1273,20 +1486,27 @@ fun SmoothPhotoViewer(uri: Uri) {
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
+
                         scaleX = scale
                         scaleY = scale
+
                         translationX = offsetX
                         translationY = offsetY
                     },
 
-            contentScale = ContentScale.Fit
+            contentScale =
+                ContentScale.Fit
         )
+
 
         if (scale > 1.01f) {
 
             Text(
-                "${(scale * 100).toInt()}%",
+
+                text = "${(scale * 100).toInt()}%",
+
                 color = Color.White,
+
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
@@ -1296,10 +1516,14 @@ fun SmoothPhotoViewer(uri: Uri) {
     }
 }
 
+
 @Composable
-fun SmoothVideoViewer(uri: Uri) {
+fun SmoothVideoViewer(
+    uri: Uri
+) {
 
     val context = LocalContext.current
+
 
     val player =
         remember(uri) {
@@ -1318,6 +1542,7 @@ fun SmoothVideoViewer(uri: Uri) {
                 }
         }
 
+
     DisposableEffect(player) {
 
         onDispose {
@@ -1325,37 +1550,47 @@ fun SmoothVideoViewer(uri: Uri) {
         }
     }
 
+
     AndroidView(
 
-        factory = {
+        factory = { viewContext ->
 
-            PlayerView(it).apply {
+            PlayerView(viewContext).apply {
 
                 this.player = player
+
                 useController = true
             }
         },
 
-        modifier = Modifier.fillMaxSize()
+        modifier =
+            Modifier.fillMaxSize()
     )
 }
 
-@Composable
-fun OpenExternal(file: MediaFile) {
 
-    val context = LocalContext.current
+@Composable
+fun OpenExternal(
+    file: MediaFile
+) {
+
+    val context =
+        LocalContext.current
+
 
     Button(
 
         onClick = {
 
-            val i =
+            val intent =
                 Intent(
                     Intent.ACTION_VIEW
                 ).apply {
 
                     setDataAndType(
+
                         file.uri,
+
                         file.mime.ifBlank {
                             "/"
                         }
@@ -1366,9 +1601,10 @@ fun OpenExternal(file: MediaFile) {
                     )
                 }
 
+
             try {
 
-                context.startActivity(i)
+                context.startActivity(intent)
 
             } catch (_: Exception) {
             }
@@ -1376,83 +1612,112 @@ fun OpenExternal(file: MediaFile) {
 
     ) {
 
-        Text("Open file")
+        Text(
+            text = "Open file"
+        )
     }
 }
+
 
 suspend fun scanMediaStore(
     context: Context
 ): List<MediaFile> =
+
     withContext(Dispatchers.IO) {
 
         val out =
             ArrayList<MediaFile>(4096)
 
+
         fun query(
+
             uri: Uri,
+
             type: Category,
+
             projection: Array<String>
+
         ) {
 
             try {
 
                 context.contentResolver
                     .query(
+
                         uri,
+
                         projection,
+
                         null,
+
                         null,
+
                         "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+
                     )
-                    ?.use { c ->
+                    ?.use { cursor ->
+
 
                         val id =
-                            c.getColumnIndex(
+                            cursor.getColumnIndex(
                                 MediaStore.MediaColumns._ID
                             )
 
+
                         val name =
-                            c.getColumnIndex(
+                            cursor.getColumnIndex(
                                 MediaStore.MediaColumns.DISPLAY_NAME
                             )
 
+
                         val mime =
-                            c.getColumnIndex(
+                            cursor.getColumnIndex(
                                 MediaStore.MediaColumns.MIME_TYPE
                             )
 
+
                         val size =
-                            c.getColumnIndex(
+                            cursor.getColumnIndex(
                                 MediaStore.MediaColumns.SIZE
                             )
+
 
                         if (id < 0 || name < 0) {
                             return@use
                         }
 
-                        while (c.moveToNext()) {
+
+                        while (cursor.moveToNext()) {
 
                             out += MediaFile(
 
-                                Uri.withAppendedPath(
-                                    uri,
-                                    c.getLong(id).toString()
-                                ),
+                                uri =
+                                    Uri.withAppendedPath(
+                                        uri,
+                                        cursor
+                                            .getLong(id)
+                                            .toString()
+                                    ),
 
-                                c.getString(name)
-                                    ?: "Unknown",
+                                name =
+                                    cursor
+                                        .getString(name)
+                                        ?: "Unknown",
 
-                                if (mime >= 0)
-                                    c.getString(mime) ?: ""
-                                else
-                                    "",
+                                mime =
+                                    if (mime >= 0)
+                                        cursor.getString(mime)
+                                            ?: ""
+                                    else
+                                        "",
 
-                                type,
+                                type = type,
 
-                                if (size >= 0)
-                                    c.getLong(size)
-                                else
-                                    0L
+                                size =
+                                    if (size >= 0)
+                                        cursor.getLong(size)
+                                    else
+                                        0L
                             )
                         }
                     }
@@ -1461,85 +1726,135 @@ suspend fun scanMediaStore(
             }
         }
 
+
         query(
+
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+
             Category.PHOTOS,
+
             arrayOf(
+
                 MediaStore.Images.Media._ID,
+
                 MediaStore.Images.Media.DISPLAY_NAME,
+
                 MediaStore.Images.Media.MIME_TYPE,
+
                 MediaStore.Images.Media.SIZE
             )
         )
 
+
         query(
+
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+
             Category.VIDEOS,
+
             arrayOf(
+
                 MediaStore.Video.Media._ID,
+
                 MediaStore.Video.Media.DISPLAY_NAME,
+
                 MediaStore.Video.Media.MIME_TYPE,
+
                 MediaStore.Video.Media.SIZE
             )
         )
 
+
         query(
+
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+
             Category.MUSIC,
+
             arrayOf(
+
                 MediaStore.Audio.Media._ID,
+
                 MediaStore.Audio.Media.DISPLAY_NAME,
+
                 MediaStore.Audio.Media.MIME_TYPE,
+
                 MediaStore.Audio.Media.SIZE
             )
         )
 
+
         out
     }
 
+
 suspend fun scanTree(
+
     context: Context,
+
     treeUri: Uri
+
 ): List<MediaFile> =
+
     withContext(Dispatchers.IO) {
+
 
         val root =
             DocumentFile.fromTreeUri(
                 context,
                 treeUri
-            ) ?: return@withContext emptyList()
+            )
+                ?: return@withContext emptyList()
+
 
         val out =
             ArrayList<MediaFile>()
 
-        fun walk(dir: DocumentFile) {
+
+        fun walk(
+            dir: DocumentFile
+        ) {
 
             val children =
+
                 try {
                     dir.listFiles()
                 } catch (_: Exception) {
                     emptyArray()
                 }
 
-            for (f in children) {
+
+            for (file in children) {
 
                 try {
 
-                    if (f.isDirectory) {
+                    if (file.isDirectory) {
 
-                        walk(f)
+                        walk(file)
 
-                    } else if (f.isFile) {
+                    } else if (file.isFile) {
 
                         val mime =
-                            f.type ?: "/"
+                            file.type ?: "/"
+
 
                         out += MediaFile(
-                            f.uri,
-                            f.name ?: "Unknown",
-                            mime,
-                            categoryFromMime(mime),
-                            f.length()
+
+                            uri = file.uri,
+
+                            name =
+                                file.name
+                                    ?: "Unknown",
+
+                            mime = mime,
+
+                            type =
+                                categoryFromMime(
+                                    mime
+                                ),
+
+                            size =
+                                file.length()
                         )
                     }
 
@@ -1548,10 +1863,13 @@ suspend fun scanTree(
             }
         }
 
+
         walk(root)
+
 
         out
     }
+
 
 fun categoryFromMime(
     mime: String
@@ -1560,16 +1878,20 @@ fun categoryFromMime(
     val m =
         mime.lowercase(Locale.US)
 
+
     return when {
 
         m.startsWith("image/") ->
             Category.PHOTOS
 
+
         m.startsWith("video/") ->
             Category.VIDEOS
 
+
         m.startsWith("audio/") ->
             Category.MUSIC
+
 
         m == "application/pdf" ||
                 m.startsWith("text/") ||
@@ -1577,32 +1899,42 @@ fun categoryFromMime(
                 m.contains("excel") ||
                 m.contains("spreadsheet") ||
                 m.contains("powerpoint") ->
+
             Category.DOCS
+
 
         else ->
             Category.ALL
     }
 }
 
+
 fun makeCounts(
     files: List<MediaFile>
-) =
+): Counts =
+
     Counts(
-        files.count {
-            it.type == Category.PHOTOS
-        },
 
-        files.count {
-            it.type == Category.VIDEOS
-        },
+        photos =
+            files.count {
+                it.type == Category.PHOTOS
+            },
 
-        files.count {
-            it.type == Category.MUSIC
-        },
+        videos =
+            files.count {
+                it.type == Category.VIDEOS
+            },
 
-        files.count {
-            it.type == Category.DOCS
-        },
+        music =
+            files.count {
+                it.type == Category.MUSIC
+            },
 
-        files.size
+        docs =
+            files.count {
+                it.type == Category.DOCS
+            },
+
+        all =
+            files.size
     )
